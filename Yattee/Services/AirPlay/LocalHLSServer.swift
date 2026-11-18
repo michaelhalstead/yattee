@@ -99,8 +99,16 @@ final class LocalHLSServer: Sendable {
             task = new
             return new
         }
-        do { return try await task.value } catch {
-            sharedLoopback.withLock { $0 = nil }
+        do {
+            let server = try await task.value
+            guard server.listener.state != .ready else { return server }
+            // iOS can tear the listener down while the app is suspended; start a fresh one.
+            LoggingService.shared.info("Loopback media server was \(server.listener.state); restarting", category: .player)
+            server.stop()
+            sharedLoopback.withLock { if $0 == task { $0 = nil } }
+            return try await loopback()
+        } catch {
+            sharedLoopback.withLock { if $0 == task { $0 = nil } }
             throw error
         }
     }

@@ -3179,6 +3179,12 @@ extension PlayerService: PlayerBackendDelegate {
 
     func backendDidFinishPlaying(_ backend: any PlayerBackend) {
         guard isActiveBackend(backend) else { return }
+        // A dropped stream can read as end-of-file; don't record that as a finished watch.
+        if !state.isLive, state.duration > 0, state.currentTime < state.duration - 10 {
+            LoggingService.shared.warning("Playback ended at \(Int(state.currentTime))s of \(Int(state.duration))s; refreshing stream", category: .player)
+            self.backend(backend, didRequestStreamRefresh: state.currentTime)
+            return
+        }
         // Mark that video ended naturally - prevents play() from saving progress again
         // when switching to next video (100% is already saved below)
         videoEndedNaturally = true
