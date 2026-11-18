@@ -119,6 +119,23 @@ struct AddSourceView: View {
                 }
             }
 
+            #if !os(tvOS)
+            if let appEnvironment, !appEnvironment.instancesManager.instances.contains(where: { $0.type == .onDevice }) {
+                Section {
+                    Button {
+                        appEnvironment.instancesManager.add(
+                            Instance(type: .onDevice, url: OnDeviceAPI.instanceURL, name: String(localized: "instances.type.onDevice"))
+                        )
+                        dismiss()
+                    } label: {
+                        Label(String(localized: "sources.addOnDevice"), systemImage: "iphone")
+                    }
+                } footer: {
+                    Text(String(localized: "sources.footer.onDevice"))
+                }
+            }
+            #endif
+
             Section {
                 #if !os(tvOS)
                 NavigationLink {

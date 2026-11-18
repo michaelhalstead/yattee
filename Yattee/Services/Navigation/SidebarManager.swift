@@ -303,6 +303,7 @@ final class SidebarManager {
             case .piped: typeOrder = 1
             case .peertube: typeOrder = 2
             case .yatteeServer: typeOrder = 3
+            case .onDevice: typeOrder = 4
             }
             entries.append(SourceEntry(item: item, name: instance.displayName, date: instance.dateAdded, typeOrder: typeOrder))
         }

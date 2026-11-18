@@ -62,6 +62,8 @@ actor ContentService: ContentServiceProtocol {
             return await peerTubeAPI(for: instance)
         case .yatteeServer:
             return await yatteeServerAPI(for: instance)
+        case .onDevice:
+            return OnDeviceAPI.shared
         }
     }
 
@@ -616,6 +618,10 @@ actor ContentService: ContentServiceProtocol {
             let streams = try await streamsTask
             let captions = try await captionsTask
             return (video, streams, captions, [])
+
+        case .onDevice:
+            let result = try await OnDeviceAPI.shared.videoWithStreams(id: id)
+            return (result.video, result.streams, [], [])
         }
     }
 

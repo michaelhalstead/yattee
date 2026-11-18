@@ -427,12 +427,15 @@ final class SubscriptionFeedCache {
         }.value
     }
 
-    /// Refreshes feed for local account using Yattee Server.
+    /// Refreshes feed for local account using Yattee Server, or on device when only that source is enabled.
     private func refreshLocalAccount(using appEnvironment: AppEnvironment, generation: Int) async {
-        // Require Yattee Server for local accounts
-        guard let serverInstance = appEnvironment.instancesManager.instances.first(where: {
-            $0.type == .yatteeServer && $0.isEnabled
-        }) else {
+        let instances = appEnvironment.instancesManager.instances
+        guard let serverInstance = instances.first(where: { $0.type == .yatteeServer && $0.isEnabled }) else {
+            if let onDeviceInstance = instances.first(where: { $0.type == .onDevice && $0.isEnabled }) {
+                LoggingService.shared.info("Refreshing feed on device", category: .general)
+                await refreshOnDevice(instance: onDeviceInstance, using: appEnvironment, generation: generation)
+                return
+            }
             LoggingService.shared.warning("Local subscriptions require Yattee Server, but none is configured", category: .general)
             feedLoadState = .error(.yatteeServerRequired)
             isLoading = false
@@ -729,6 +732,38 @@ final class SubscriptionFeedCache {
             feedLoadState = .error(.networkError(error.localizedDescription))
             isLoading = false
         }
+    }
+
+    /// Builds the feed from each subscribed channel's RSS feed (see OnDeviceFeed). One page, no polling.
+    private func refreshOnDevice(instance: Instance, using appEnvironment: AppEnvironment, generation: Int) async {
+        let subscriptions = appEnvironment.dataManager.subscriptions()
+        guard !subscriptions.isEmpty else {
+            videos = []
+            isLoading = false
+            hasLoadedOnce = true
+            feedLoadState = .ready
+            return
+        }
+
+        isLoading = true
+        feedLoadState = .loading
+        loadingProgress = nil
+        hasMorePages = false
+
+        do {
+            let feedVideos = try await OnDeviceFeed.videos(channelIDs: subscriptions.map(\.channelID), instance: instance)
+            guard isCurrentAccountsResult(generation) else { return }
+            LoggingService.shared.info("On-device feed: \(feedVideos.count) videos from \(subscriptions.count) channels", category: .general)
+            update(videos: feedVideos, generation: generation)
+            appEnvironment.dataManager.updateLastVideoPublishedDates(from: feedVideos)
+            prefetchDeArrow(for: feedVideos, using: appEnvironment)
+            feedLoadState = .ready
+        } catch {
+            LoggingService.shared.error("On-device feed failed: \(error.localizedDescription)", category: .general)
+            guard isCurrentAccountsResult(generation) else { return }
+            feedLoadState = .error(.networkError(error.localizedDescription))
+        }
+        isLoading = false
     }
 
     /// Polls server until all channels are cached, then refreshes.

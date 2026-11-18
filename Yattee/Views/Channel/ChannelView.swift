@@ -1231,14 +1231,14 @@ struct ChannelView: View {
         }
     }
 
-    /// Whether the current instance supports channel tabs (Invidious, Yattee Server, or Piped - not external channels)
+    /// Whether the current instance supports channel tabs (Invidious, Yattee Server, Piped or On device - not external channels)
     private var supportsChannelTabs: Bool {
         // External channels only show videos (no tabs)
         guard !isExternalChannel else { return false }
         guard let instance = instanceForSource() else {
             return false
         }
-        return instance.type == .invidious || instance.type == .yatteeServer || instance.type == .piped
+        return instance.type == .invidious || instance.type == .yatteeServer || instance.type == .piped || instance.type == .onDevice
     }
 
     /// Whether the current instance supports channel search (Invidious or Yattee Server, not external channels or Piped)

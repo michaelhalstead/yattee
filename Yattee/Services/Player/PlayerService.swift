@@ -106,6 +106,13 @@ final class PlayerService {
     /// Whether online streams are currently being loaded.
     private(set) var isLoadingOnlineStreams: Bool = false
 
+    // MARK: - AirPlay (see PlayerService+AirPlay.swift)
+
+    /// AVPlayer session driving playback while an on-device video is AirPlayed; MPV is paused meanwhile.
+    var airPlayBackend: AirPlayBackend?
+    @ObservationIgnored var airPlayHandoffTask: Task<Void, Never>?
+    @ObservationIgnored var airPlayRouteObserver: NSObjectProtocol?
+
     // MARK: - Dependencies
 
     private let contentService: ContentService
@@ -266,6 +273,7 @@ final class PlayerService {
 
         // Set up audio session when playback actually starts (not at app launch)
         setupAudioSession()
+        prepareAirPlayForLoad()
 
         let isNewVideo = state.currentVideo?.id != video.id
 
@@ -502,7 +510,12 @@ final class PlayerService {
             // Load stream
             // Pass EDL setting (MPV-specific: combines video+audio into single virtual file for unified caching)
             let useEDL = settingsManager?.mpvUseEDLStreams ?? true
-            try await backend.load(stream: selectedStream, audioStream: selectedAudioStream, autoplay: false, useEDL: useEDL)
+            try await backend.load(
+                stream: await loopbackProxied(selectedStream, for: video) ?? selectedStream,
+                audioStream: await loopbackProxied(selectedAudioStream, for: video),
+                autoplay: false,
+                useEDL: useEDL
+            )
 
             // Check for cancellation after stream load completes
             try Task.checkCancellation()
@@ -660,7 +673,7 @@ final class PlayerService {
     ///   already ended (100% was saved in `backendDidFinishPlaying`).
     func pause(saveProgress shouldSaveProgress: Bool = true) {
         sleepPreventionService.allowSleep()
-        currentBackend?.pause()
+        activeBackend?.pause()
         state.setPlaybackState(.paused)
         if shouldSaveProgress {
             saveProgress()
@@ -671,7 +684,7 @@ final class PlayerService {
     /// Resumes playback.
     func resume() {
         updateSleepPrevention()
-        currentBackend?.play()
+        activeBackend?.play()
         state.setPlaybackState(.playing)
         nowPlayingService.updatePlaybackRate(isPlaying: true, currentTime: state.currentTime)
     }
@@ -772,7 +785,7 @@ final class PlayerService {
     ///   - showLoading: If true, show loading state during seek (e.g., for early SponsorBlock skips)
     func seek(to time: TimeInterval, showLoading: Bool = false) async {
         state.isSeeking = true
-        await currentBackend?.seek(to: time, showLoading: showLoading)
+        await activeBackend?.seek(to: time, showLoading: showLoading)
         state.isSeeking = false
         state.currentTime = time
     }
@@ -782,7 +795,7 @@ final class PlayerService {
         state.isSeeking = true
         let newTime = state.currentTime + seconds
         Task {
-            await currentBackend?.seek(to: newTime, showLoading: false)
+            await activeBackend?.seek(to: newTime, showLoading: false)
             state.isSeeking = false
         }
     }
@@ -792,7 +805,7 @@ final class PlayerService {
         state.isSeeking = true
         let newTime = max(state.currentTime - seconds, 0)
         Task {
-            await currentBackend?.seek(to: newTime, showLoading: false)
+            await activeBackend?.seek(to: newTime, showLoading: false)
             state.isSeeking = false
         }
     }
@@ -2528,7 +2541,7 @@ final class PlayerService {
         return backend
     }
 
-    private var instancesManager: InstancesManager?
+    private(set) var instancesManager: InstancesManager?
     private weak var mediaSourcesManager: MediaSourcesManager?
     private var smbClient: SMBClient?
     private var webDAVClient: WebDAVClient?
@@ -2959,6 +2972,7 @@ final class PlayerService {
         currentPlayTask?.cancel()
         currentPlayTask = nil
 
+        stopAirPlay(resumeMPV: false)
         currentBackend?.stop()
         // Keep backend alive for reuse - prevents race condition where old backend's
         // delayed deinit destroys render context that new backend is using
@@ -3050,6 +3064,7 @@ final class PlayerService {
 
 extension PlayerService: PlayerBackendDelegate {
     func backend(_ backend: any PlayerBackend, didUpdateTime time: TimeInterval) {
+        guard isActiveBackend(backend) else { return }
         // Ignore time updates while loading a new video - these are stale updates from the previous video
         guard loadingVideoID == nil else { return }
 
@@ -3079,6 +3094,11 @@ extension PlayerService: PlayerBackendDelegate {
     }
 
     func backend(_ backend: any PlayerBackend, didChangeState playbackState: PlaybackState) {
+        guard isActiveBackend(backend) else {
+            // Something resumed MPV behind an AirPlay session (load flow, app lifecycle); keep it paused.
+            if playbackState == .playing, airPlayBackend != nil, !(backend is AirPlayBackend) { backend.pause() }
+            return
+        }
         LoggingService.shared.debug("Backend state changed to: \(playbackState)", category: .player)
 
         // Clear the time-update gate once the new video is loaded, in case the load
@@ -3143,6 +3163,7 @@ extension PlayerService: PlayerBackendDelegate {
     func backendDidBecomeReady(_ backend: any PlayerBackend) {
         // First frame of new video has been rendered - thumbnail can now hide
         state.isFirstFrameReady = true
+        evaluateAirPlayRoute()
     }
 
     func backendDidFallBackToSoftwareDecoding(_ backend: any PlayerBackend) {
@@ -3157,6 +3178,7 @@ extension PlayerService: PlayerBackendDelegate {
     }
 
     func backendDidFinishPlaying(_ backend: any PlayerBackend) {
+        guard isActiveBackend(backend) else { return }
         // Mark that video ended naturally - prevents play() from saving progress again
         // when switching to next video (100% is already saved below)
         videoEndedNaturally = true

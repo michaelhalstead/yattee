@@ -112,3 +112,7 @@ spec/ui_snapshots/diff/
 # Environment variables (contains secrets)
 .env
 .env.local
+
+# On-device JS backend
+ondevice-js/node_modules/
+build-device/

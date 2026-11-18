@@ -7,6 +7,39 @@
     "-%@" : {
 
     },
+    "instances.type.onDevice" : {
+      "comment" : "Instance type: YouTube via YouTube.js running on the device",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On device"
+          }
+        }
+      }
+    },
+    "sources.addOnDevice" : {
+      "comment" : "Add Source button that adds the on-device YouTube source",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add On-Device YouTube"
+          }
+        }
+      }
+    },
+    "sources.footer.onDevice" : {
+      "comment" : "Footer explaining the on-device YouTube source",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fetches YouTube directly from this device. No server needed. No comments or trending yet."
+          }
+        }
+      }
+    },
     "·" : {
 
     },

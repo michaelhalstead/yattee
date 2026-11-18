@@ -1,0 +1,16 @@
+{
+  "name": "yattee-ondevice",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild index.js --bundle --format=iife --platform=browser --target=safari18 --minify --outfile=../Yattee/Resources/ondevice.js"
+  },
+  "dependencies": {
+    "bgutils-js": "4.0.3",
+    "youtubei.js": "18.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jsdom": "^26.1.0"
+  }
+}

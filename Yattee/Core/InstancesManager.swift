@@ -325,6 +325,14 @@ final class InstancesManager {
            let decoded = try? JSONDecoder().decode([Instance].self, from: data) {
             instances = decoded
         }
+        #if !os(tvOS)
+        // Personal build: start with the on-device YouTube source so the app works with no setup.
+        // Only for the app's own store; tests build managers on empty scratch defaults.
+        if instances.isEmpty, localDefaults === UserDefaults.standard {
+            instances = [Instance(type: .onDevice, url: OnDeviceAPI.instanceURL, name: String(localized: "instances.type.onDevice"))]
+            saveInstances()
+        }
+        #endif
     }
 
     private func saveInstances() {

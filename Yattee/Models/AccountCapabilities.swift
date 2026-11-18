@@ -95,6 +95,10 @@ extension InstanceType {
             // gets a merged feed back, with HTTP Basic as the only auth. Per-user
             // accounts are planned server-side; this row is where they land.
             .none
+
+        case .onDevice:
+            // Talks to YouTube anonymously from the device; no accounts.
+            .none
         }
     }
 }

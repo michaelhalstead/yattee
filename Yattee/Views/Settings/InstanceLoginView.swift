@@ -212,7 +212,7 @@ struct InstanceLoginView: View {
             return String(localized: "login.username")
         case .yatteeServer:
             return String(localized: "login.username")
-        case .peertube:
+        case .peertube, .onDevice:
             return String(localized: "login.username")
         }
     }
@@ -226,7 +226,7 @@ struct InstanceLoginView: View {
             return String(localized: "login.footer.invidiousAccount \(instance.displayName)")
         case .yatteeServer:
             return String(localized: "login.footer.yatteeServerAccount \(instance.displayName)")
-        case .peertube:
+        case .peertube, .onDevice:
             // No account concept at all, so no sign-in is offered — and if one
             // ever were, an empty footer explains nothing.
             return ""

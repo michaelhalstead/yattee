@@ -18,6 +18,7 @@ struct AirPlayButton: UIViewRepresentable {
         let routePicker = AVRoutePickerView()
         routePicker.tintColor = tintColor
         routePicker.activeTintColor = .systemBlue
+        routePicker.prioritizesVideoDevices = true
         return routePicker
     }
 
