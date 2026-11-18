@@ -49,7 +49,7 @@ final class AirPlayBackend: PlayerBackend {
     private var observations: [NSKeyValueObservation] = []
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
-    private var didStart = false
+    private(set) var didStart = false
 
     private init(url: URL, server: LocalHLSServer?, summary: String) {
         self.url = url
@@ -192,7 +192,8 @@ final class AirPlayBackend: PlayerBackend {
                 if playing { play() } else { delegate?.backend(self, didChangeState: .paused) }
                 LoggingService.shared.info("AirPlay started (\(summary)) at \(Int(time))s", category: .player)
                 // An AirPlay speaker accepts the audio but never starts external playback.
-                try? await Task.sleep(for: .seconds(8))
+                // The first handoff after launch can be slow while the TV spins up.
+                try? await Task.sleep(for: .seconds(20))
                 if !player.isExternalPlaybackActive, player.currentItem != nil {
                     if let uid = AVAudioSession.sharedInstance().currentRoute.outputs.first(where: { $0.portType == .airPlay })?.uid {
                         Self.audioOnlyRouteUIDs.insert(uid)

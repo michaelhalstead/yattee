@@ -2018,6 +2018,36 @@
         }
       }
     },
+    "player.airplay.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AirPlay"
+          }
+        }
+      }
+    },
+    "player.airplay.playingOn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playing on %@"
+          }
+        }
+      }
+    },
+    "player.airplay.playingOnTV" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playing on TV"
+          }
+        }
+      }
+    },
     "controls.button.airplay" : {
       "localizations" : {
         "en" : {

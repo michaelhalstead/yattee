@@ -353,6 +353,9 @@ struct MiniPlayerView: View {
                 #if os(iOS)
                 MPVRenderViewRepresentable(backend: backend, playerState: playerState, fillsFrame: true)
                     .allowsHitTesting(false)
+                if playerService?.airPlayBackend != nil {
+                    AirPlayPlaceholderView(compact: true)
+                }
                 #else
                 MPVRenderViewRepresentable(backend: backend, playerState: playerState)
                     .allowsHitTesting(false)

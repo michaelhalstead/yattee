@@ -82,7 +82,14 @@ struct MPVVideoView: View {
                 )
                 .frame(width: width, height: height)
                 .background(Color.black)
-                
+
+                #if os(iOS)
+                if playerService.airPlayBackend != nil {
+                    AirPlayPlaceholderView()
+                        .frame(width: width, height: height)
+                }
+                #endif
+
                 // Loading overlay - shown only if backend setup is not complete
                 // (should be rare since backends are pre-warmed at app launch)
                 if !backend.isSetupComplete {

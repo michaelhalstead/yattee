@@ -28,6 +28,8 @@ extension PlayerService {
     func prepareAirPlayForLoad() {
         #if os(iOS)
         stopAirPlay(resumeMPV: false)
+        // One slow or failed handoff shouldn't block video to that TV for the rest of the app's life.
+        AirPlayBackend.audioOnlyRouteUIDs.removeAll()
         guard airPlayRouteObserver == nil else { return }
         airPlayRouteObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
@@ -82,12 +84,14 @@ extension PlayerService {
         airPlayHandoffTask = nil
         guard let backend = airPlayBackend else { return }
         let time = backend.currentTime
+        let started = backend.didStart
         let wasPlaying = backend.isPlaying
         backend.stop()
         airPlayBackend = nil
         guard resumeMPV else { return }
         Task {
-            await seek(to: time)
+            // If AVPlayer never got going its time is 0; MPV is still paused at the handoff point.
+            if started { await seek(to: time) }
             if wasPlaying { resume() } else { pause(saveProgress: false) }
         }
     }
